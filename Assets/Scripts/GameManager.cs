@@ -14,10 +14,15 @@ public class GameManager : MonoBehaviour
     }
     #endregion
 
+    #region Vars
     private Camera cam;
 
-    public Ball ball;
+    [SerializeField] private PlatformGenerator platformGenerator;
+    [SerializeField] private ObjectPooling objectPooling;
+    [SerializeField] private Ball ball;
+    [SerializeField] private Trajectory trajectory;
     [SerializeField] float pushForce = 4f;
+    [SerializeField] private GameObject panel;
 
     private bool isDraggin = false;
 
@@ -26,35 +31,61 @@ public class GameManager : MonoBehaviour
     Vector2 direction;
     Vector2 force;
     float distance;
+    #endregion
 
-    private void Start(){
+    private void Start() {
         cam = Camera.main;
-        ball.DesactivateRb();
+        ball.desactivateRb();
     }
 
-    private void Update(){
-        if (Input.GetMouseButtonDown(0)){
-            isDraggin = true;
-            OnDragStart();
+    private void Update() {
+        if (ball.onGround) {
+            if (Input.GetMouseButtonDown(0)) {
+                isDraggin = true;
+                onDragStart();
+            }
+            if (Input.GetMouseButtonUp(0)) {
+                isDraggin = false;
+                onDragEnd();
+            }
+            if (isDraggin) {
+                onDrag();
+            }
         }
-        if (Input.GetMouseButtonUp(0)){
-            isDraggin = false;
-            OnDragEnd();
-        }
-        if (isDraggin){
-            OnDrag();
-        }
     }
 
-    private void OnDragStart(){
-        ball.DesactivateRb();
+    private void onDragStart() {
+        ball.desactivateRb();
+        startPoint = cam.ScreenToWorldPoint(Input.mousePosition);
+
+        trajectory.show();
     }
 
-    private void OnDrag(){
+    private void onDrag() {
+        endPoint = cam.ScreenToWorldPoint(Input.mousePosition);
+        distance = Vector2.Distance(startPoint, endPoint);
+        direction = (startPoint - endPoint).normalized;
+        force = direction * distance * pushForce;
 
+        Debug.DrawLine(startPoint, endPoint);
+
+        trajectory.uptadeDots(ball.pos, force);
     }
 
-    private void OnDragEnd(){
+    private void onDragEnd() {
+        ball.activateRb();
+        ball.push(force);
 
+        trajectory.hide();
+    }
+
+    public void restart() {
+        objectPooling.allObjDespawn();
+        panel.SetActive(false);
+        ball.gameObject.transform.position = new Vector3(3.3f, -4f, 1);
+        cam.transform.position = new Vector3(0, 0, -10); ;
+        platformGenerator.spawnY = .5f;
+        ball.gameObject.SetActive(true);
+        platformGenerator.Start();
     }
 }
